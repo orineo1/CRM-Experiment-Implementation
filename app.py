@@ -45,7 +45,8 @@ m_border =0
 dosage_values = []
 last_paint_dos = 0
 recommend_dosage = 1
-
+side_effects=False
+first_side_effects=False
 # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 external_stylesheets = [dbc.themes.CERULEAN]
 
@@ -153,19 +154,35 @@ def init_exp(n_clicks, doses_value, output_text):
     return instructions_text
 
 def exp_process(n_clicks, doses_value, output_text):
-    global dosage, m_border,dosage_values,last_paint_dos,df,recommend_dosage,xi_list
+    global dosage, m_border,dosage_values,last_paint_dos,df,recommend_dosage,xi_list,side_effects
 
     if n_clicks%2==1:
-        if doses_value in ["Yes","No"]:
-            df.loc[(df["infected"] == doses_value) & (
-                        df["dosage"] == last_paint_dos), "total_patients"] += 1
+        df.loc[(df["infected"] == doses_value) & (
+                    df["dosage"] == last_paint_dos), "total_patients"] += 1
+        if doses_value=="Yes":
+            side_effects=True
+        print(df)
         if n_clicks>4:
-            theta, recommend_dosage,prob_test  = main(df, eval(xi_list), float(m_border))
+            no_indected_last = (df.loc[(df["dosage"] == last_paint_dos) & (df["infected"] == "Yes"), "total_patients"] == 0).any()
+            total_last_1 = (df.loc[(df["dosage"] == last_paint_dos) & (df["infected"] == "No"), "total_patients"] == 1).any()
+            if recommend_dosage==int(len(dosage_values)/2):
+                total_last_1 = (df.loc[(df["dosage"] == last_paint_dos) & (
+                            df["infected"] == "No"), "total_patients"] >0).any()
+            print(no_indected_last,total_last_1 )
+            if no_indected_last and total_last_1:
+                print(recommend_dosage,len(dosage_values))
+                recommend_dosage = recommend_dosage+1 if recommend_dosage< len(dosage_values)/2 else int(len(dosage_values)/2)
+                print(recommend_dosage)
+            else:
+                theta, recommend_dosage, prob_test = main(df, eval(xi_list), float(m_border))
 
         instructions_text = f"""The recommended dose for the experiment now is {recommend_dosage}, what dose to use in the next experiment?\n\n e.g. - '1'"""
     if n_clicks % 2 == 0:
+        print(doses_value)
+        # last_paint_dos = int(doses_value)
         last_paint_dos = int(doses_value)
         instructions_text = f"""Did the experimenter experience side effects? \n\nIf yes send 'Yes' if not send 'No'"""
+
 
     return instructions_text
 
@@ -183,7 +200,11 @@ def update_prompt_text(n_clicks, doses_value, output_text):
     else:
         return_val = exp_process(n_clicks, doses_value, output_text)
         if n_clicks > 4:
-            theta, recommend_dosage, prob_l = main(df, eval(xi_list), float(m_border))
+            if not side_effects:
+                theta, recommend_dosage_false, prob_l = main(df, eval(xi_list), float(m_border))
+            else:
+                theta, recommend_dosage, prob_l = main(df, eval(xi_list), float(m_border))
+
 
             print(theta, recommend_dosage, prob_l)
             output_text = f"""The thea is : {str(round(theta,4))}\n\nThe current estimator for pro is: {str(prob_l)} """
