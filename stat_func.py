@@ -27,7 +27,7 @@ def create_likelihood(args):
         term_string = f" * ({binomial_coefficient} * (({success_prob}**c) ** {num_success} )*( (1-{success_prob}**c) ** {num_failure}))"
         function_string += term_string
 
-    function_string += "\n    return p"
+    function_string += "\n    return - p"
 
     global_namespace = {}
     local_namespace = {}
@@ -48,12 +48,9 @@ def find_best_dosage(xi_l, curr_theta, m):
 
 def main(df, xi_l, m):
     args_l = organize(df, xi_l)
-    print(args_l)
     likelihood_func = create_likelihood(args_l)
     est_theta = find_curr_theta(likelihood_func)
-    print(est_theta)
     recommended_dosage = find_best_dosage(xi_l, est_theta, m)
-    print(recommended_dosage)
     xi_l_updated = np.array(xi_l) ** est_theta
 
     return est_theta, recommended_dosage, xi_l_updated
