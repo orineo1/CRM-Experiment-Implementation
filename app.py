@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import  numpy as np
 import plotly.express as px
+from stat_func import main
 
 LST_OF_JOKES = ['"What made the chicken cross the road? To get to the other side of the confidence interval!"',
                 '"What is the number of statisticians needed to change a light bulb? That depends. It is really a matter of power."',
@@ -38,12 +39,14 @@ LST_OF_JOKES = ['"What made the chicken cross the road? To get to the other side
 
 theta =0
 prob_l = [0,0]
+xi_list = []
 dosage = 0,
 m_border =0
 dosage_values = []
 last_paint_dos = 0
+recommend_dosage = 1
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 external_stylesheets = [dbc.themes.CERULEAN]
 
 # Initialize DataFrame
@@ -62,6 +65,7 @@ fig.update_layout(
     yaxis=dict(type='linear'),  # Set y-axis type to category
     yaxis_range=[0, 1]  # Set the y-axis limit to 0 and 1
 )
+
 # Get an available port
 def get_available_port():
     # Create a socket
@@ -149,20 +153,18 @@ def init_exp(n_clicks, doses_value, output_text):
     return instructions_text
 
 def exp_process(n_clicks, doses_value, output_text):
-    global dosage,prob_l, m_border,dosage_values,last_paint_dos,df
+    global dosage, m_border,dosage_values,last_paint_dos,df,recommend_dosage,xi_list
 
-    place_holder="a"
     if n_clicks%2==1:
-        print(doses_value)
         if doses_value in ["Yes","No"]:
             df.loc[(df["infected"] == doses_value) & (
                         df["dosage"] == last_paint_dos), "total_patients"] += 1
-            print(df)
-        instructions_text = f"""The recommended dose for the experiment now is {place_holder}, what dose to use in the next experiment?\n\n e.g. - '1'"""
-    if n_clicks % 2 == 0:
-        print("the last paints is ",doses_value)
-        last_paint_dos = int(doses_value)
+        if n_clicks>4:
+            theta, recommend_dosage,prob_test  = main(df, eval(xi_list), float(m_border))
 
+        instructions_text = f"""The recommended dose for the experiment now is {recommend_dosage}, what dose to use in the next experiment?\n\n e.g. - '1'"""
+    if n_clicks % 2 == 0:
+        last_paint_dos = int(doses_value)
         instructions_text = f"""Did the experimenter experience side effects? \n\nIf yes send 'Yes' if not send 'No'"""
 
     return instructions_text
@@ -174,16 +176,19 @@ def exp_process(n_clicks, doses_value, output_text):
     [State("user-input", "value"), State("output-text", "children")]
 )
 def update_prompt_text(n_clicks, doses_value, output_text):
+    global  df,m_border ,prob_l,recommend_dosage,xi_list
     output_text=""
     if n_clicks<3:
         return_val = init_exp(n_clicks, doses_value, output_text)
     else:
         return_val = exp_process(n_clicks, doses_value, output_text)
         if n_clicks > 4:
-            output_text = f"""The thea is : {theta}\n\nThe current estimator for pro is: {prob_l} """
+            theta, recommend_dosage, prob_l = main(df, eval(xi_list), float(m_border))
+
+            print(theta, recommend_dosage, prob_l)
+            output_text = f"""The thea is : {str(round(theta,4))}\n\nThe current estimator for pro is: {str(prob_l)} """
 
     return dcc.Markdown(return_val),output_text
-
 
 @app.callback(
     Output("user-answer", "children"),
@@ -191,17 +196,19 @@ def update_prompt_text(n_clicks, doses_value, output_text):
     [State("user-input", "value"), State("user-answer", "children")]
 )
 def update_exp_property(n_clicks, user_input, user_answer):
-    global dosage,prob_l, m_border,dosage_values
+    global prob_l, m_border,dosage_values,xi_list
     if n_clicks is None or n_clicks == 0:
         return "right now there is nothing here, start the processes to init the exp"  # No user answer yet
     exp_property = user_answer
+
     if n_clicks == 1 and user_answer is not None:
         exp_property = f"Number of doses: {user_input}"
         dosage_values = [i  for i in range(1, int(user_input) + 1) for j in range(2)]
-        print(dosage_values)
+
     if n_clicks == 2 and user_answer is not None:
         exp_property += f" | Xi vector: {user_input}"
-        prob_l = user_input
+        prob_l,xi_list = user_input,user_input
+
     if n_clicks == 3 and user_answer is not None:
         exp_property += f" | Target m-value: {user_input}"
         m_border=user_input
@@ -217,10 +224,6 @@ def update_exp_property(n_clicks, user_input, user_answer):
 def update_bar_plot(n_clicks, user_input):
     global dosage,prob_l, m_border,dosage_values,df,fig
     if 0<n_clicks<4:
-        # Generate random data
-        # dosage_values = [10, 10, 20, 20, 30, 30]
-        # total_patients = np.random.randint(50, 100, size=len(dosage_values))
-        # infected_values = np.random.choice(["Yes", "No"], size=len(dosage_values))
 
         # Create a DataFrame
         df = pd.DataFrame({
