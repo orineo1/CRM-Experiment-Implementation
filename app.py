@@ -142,6 +142,7 @@ app.layout = dbc.Container(
 )
 
 
+
 def init_exp(n_clicks, doses_value, output_text):
     instructions_text = ""
     if n_clicks is None or n_clicks == 0:
@@ -153,8 +154,11 @@ def init_exp(n_clicks, doses_value, output_text):
 
     return instructions_text
 
+
+
+
 def exp_process(n_clicks, doses_value, output_text):
-    global dosage, m_border,dosage_values,last_paint_dos,df,recommend_dosage,xi_list,side_effects
+    global dosage, m_border,dosage_values,last_paint_dos,df,recommend_dosage,xi_list,side_effects,first_side_effects
 
     if n_clicks%2==1:
         df.loc[(df["infected"] == doses_value) & (
@@ -163,16 +167,33 @@ def exp_process(n_clicks, doses_value, output_text):
             side_effects=True
         print(df)
         if n_clicks>4:
+            positive_paints =df[df["total_patients"]>0]
+
+            only_dosage_1 =(positive_paints["dosage"].unique()==1).all()
+            all_infected_yes = (positive_paints["infected"].unique()== "Yes").all()
+
             no_indected_last = (df.loc[(df["dosage"] == last_paint_dos) & (df["infected"] == "Yes"), "total_patients"] == 0).any()
-            total_last_1 = (df.loc[(df["dosage"] == last_paint_dos) & (df["infected"] == "No"), "total_patients"] == 1).any()
-            if recommend_dosage==int(len(dosage_values)/2):
-                total_last_1 = (df.loc[(df["dosage"] == last_paint_dos) & (
-                            df["infected"] == "No"), "total_patients"] >0).any()
-            print(no_indected_last,total_last_1 )
-            if no_indected_last and total_last_1:
-                print(recommend_dosage,len(dosage_values))
-                recommend_dosage = recommend_dosage+1 if recommend_dosage< len(dosage_values)/2 else int(len(dosage_values)/2)
-                print(recommend_dosage)
+
+            if only_dosage_1 and all_infected_yes:
+                recommend_dosage=1
+                first_side_effects = True
+
+
+            elif no_indected_last :
+                only_one_paint_last = (df.loc[(df["dosage"] == last_paint_dos) & (
+                            df["infected"] == "No"), "total_patients"] == 1).any()
+
+                print("rec_dosage",recommend_dosage)
+                print("len_dosage_values",int(len(dosage_values) / 2))
+
+                if recommend_dosage == int(len(dosage_values) / 2):
+                    print((df.loc[(df["dosage"] == last_paint_dos) & (
+                            df["infected"] == "No"), "total_patients"] > 0).any())
+
+                    only_one_paint_last = (df.loc[(df["dosage"] == last_paint_dos) & (
+                            df["infected"] == "No"), "total_patients"] > 0).any()
+                if  only_one_paint_last:
+                    recommend_dosage = recommend_dosage+1 if recommend_dosage< len(dosage_values)/2 else int(len(dosage_values)/2)
             else:
                 theta, recommend_dosage, prob_test = main(df, eval(xi_list), float(m_border))
 
@@ -185,7 +206,7 @@ def exp_process(n_clicks, doses_value, output_text):
 
 
     return instructions_text
-
+#
 
 @app.callback(
     [Output("prompt-text", "children"), Output("output-text", "children")],
@@ -193,19 +214,17 @@ def exp_process(n_clicks, doses_value, output_text):
     [State("user-input", "value"), State("output-text", "children")]
 )
 def update_prompt_text(n_clicks, doses_value, output_text):
-    global  df,m_border ,prob_l,recommend_dosage,xi_list
+    global  df,m_border ,prob_l,recommend_dosage,xi_list,first_side_effects
     output_text=""
     if n_clicks<3:
         return_val = init_exp(n_clicks, doses_value, output_text)
     else:
         return_val = exp_process(n_clicks, doses_value, output_text)
         if n_clicks > 4:
-            if not side_effects:
+            if (not side_effects) or  first_side_effects:
                 theta, recommend_dosage_false, prob_l = main(df, eval(xi_list), float(m_border))
             else:
                 theta, recommend_dosage, prob_l = main(df, eval(xi_list), float(m_border))
-
-
             print(theta, recommend_dosage, prob_l)
             output_text = f"""The thea is : {str(round(theta,4))}\n\nThe current estimator for pro is: {str(prob_l)} """
 
