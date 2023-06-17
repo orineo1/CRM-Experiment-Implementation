@@ -118,57 +118,101 @@ def init_exp(n_clicks, user_input):
 
     return instructions_text
 
+def check_incremental_dosage(df, last_painted_dos, recommend_dosage, dosage_values):
+    """
+    Check the incremental dosage in case there are no side effect patients.
 
-def exp_process(n_clicks, doses_value, output_text):
-    global dosage, m_border,dosage_values,last_painted_dos,df,recommend_dosage,xi_list,side_effects,first_side_effects
+    Args:
+        df (pandas.DataFrame): DataFrame containing the experimental data.
+        last_painted_dos (int): Last painted dosage value.
+        recommend_dosage (int): Recommended dosage for the next experiment.
+        dosage_values (list): List of all dosage values.
 
-    if n_clicks%2==1:
-        df.loc[(df["infected"] == doses_value) & (
-                df["dosage"] == last_painted_dos), "total_patients"] += 1
-        if doses_value=="Yes":
-            side_effects=True
+    Returns:
+        int: Recommended dosage for the next experiment.
+    """
+    # Check if there was only one patient without side effects in the last painted dosage
+    only_one_paint_last = (df.loc[(df["dosage"] == last_painted_dos) & (df["infected"] == "No"), "total_patients"] == 1).any()
+
+    # Check if we reached the final dosage and there are still patients with side effects
+    if recommend_dosage == int(len(dosage_values) / 2):
+        only_one_paint_last = (df.loc[(df["dosage"] == last_painted_dos) & (df["infected"] == "No"), "total_patients"] > 0).any()
+
+    # Determine the recommended dosage based on the conditions
+    if only_one_paint_last:
+        recommend_dosage = recommend_dosage + 1 if recommend_dosage < len(dosage_values) / 2 else int(len(dosage_values) / 2)
+
+    return recommend_dosage
+
+
+def process_exp_results(df, last_painted_dos, recommend_dosage, dosage_values, xi_list, m_border):
+    """
+    Process experimental results to determine the recommended dosage for the next experiment.
+
+    Args:
+        df (pandas.DataFrame): DataFrame containing the experimental data.
+        last_painted_dos (int): Last painted dosage value.
+        recommend_dosage (int): Recommended dosage for the next experiment.
+        dosage_values (list): List of all dosage values doubled [1,1,2,2,..].
+        xi_list (str): Xi vector used in the experiment  - a priori probabilty.
+        m_border (float): Target m-value for the experiment.
+
+    Returns:
+        int: Recommended dosage for the next experiment.
+    """
+    global first_side_effects
+
+    # Check if there are  patients
+    positive_paints = df[df["total_patients"] > 0]
+
+    # Check if all paints are with dosage 1 and infected is Yes
+    only_dosage_1 = (positive_paints["dosage"].unique() == 1).all()
+    all_infected_yes = (positive_paints["infected"].unique() == "Yes").all()
+
+    # Check if there were no infected patients in the last painted dosage
+    no_infected_last = (df.loc[(df["dosage"] == last_painted_dos) & (df["infected"] == "Yes"), "total_patients"] == 0).any()
+
+    # Determine the recommended dosage based on different conditions
+    if only_dosage_1 and all_infected_yes:  # Case where the first dosage always has side effects
+        recommend_dosage = 1
+        first_side_effects = True
+    elif no_infected_last:  # If the dosages without side effects continue to the next one
+        recommend_dosage = check_incremental_dosage(df, last_painted_dos, recommend_dosage, dosage_values)
+    else:  # All other scenarios
+        theta, recommend_dosage, prob_test = main(df, eval(xi_list), float(m_border))
+
+    return recommend_dosage
+
+
+def exp_process(n_clicks, user_input, output_text):
+    """
+    Processes the experiment based on the number of clicks and user input.
+
+    :param n_clicks: The number of button clicks.
+    :param user_input: The user input value for doses.
+    :param output_text: The output text.
+    :return: The instructions text.
+    """
+    global dosage, m_border, dosage_values, last_painted_dos, df, recommend_dosage, xi_list, side_effects, first_side_effects
+
+    if n_clicks % 2 == 1:
+        # Increment the total patients count for the corresponding infected dosage
+        df.loc[(df["infected"] == user_input) & (df["dosage"] == last_painted_dos), "total_patients"] += 1
+        if user_input == "Yes":
+            side_effects = True
         print(df)
-        if n_clicks>4:
-            positive_paints =df[df["total_patients"]>0]
-
-            only_dosage_1 =(positive_paints["dosage"].unique()==1).all()
-            all_infected_yes = (positive_paints["infected"].unique()== "Yes").all()
-
-            no_indected_last = (df.loc[(df["dosage"] == last_painted_dos) & (df["infected"] == "Yes"), "total_patients"] == 0).any()
-
-            if only_dosage_1 and all_infected_yes:
-                recommend_dosage=1
-                first_side_effects = True
-
-
-            elif no_indected_last :
-                only_one_paint_last = (df.loc[(df["dosage"] == last_painted_dos) & (
-                            df["infected"] == "No"), "total_patients"] == 1).any()
-
-                print("rec_dosage",recommend_dosage)
-                print("len_dosage_values",int(len(dosage_values) / 2))
-
-                if recommend_dosage == int(len(dosage_values) / 2):
-                    print((df.loc[(df["dosage"] == last_painted_dos) & (
-                            df["infected"] == "No"), "total_patients"] > 0).any())
-
-                    only_one_paint_last = (df.loc[(df["dosage"] == last_painted_dos) & (
-                            df["infected"] == "No"), "total_patients"] > 0).any()
-                if  only_one_paint_last:
-                    recommend_dosage = recommend_dosage+1 if recommend_dosage< len(dosage_values)/2 else int(len(dosage_values)/2)
-            else:
-                theta, recommend_dosage, prob_test = main(df, eval(xi_list), float(m_border))
+        if n_clicks > 4:
+            # Update the recommended dosage based on experiment results
+            recommend_dosage = process_exp_results(df, last_painted_dos, recommend_dosage, dosage_values, xi_list,
+                                                   m_border)
 
         instructions_text = f"""The recommended dose for the experiment now is {recommend_dosage}, what dose to use in the next experiment?\n\n e.g. - '1'"""
     if n_clicks % 2 == 0:
-        print(doses_value)
-        # last_paint_dos = int(doses_value)
-        last_painted_dos = int(doses_value)
+        last_painted_dos = int(user_input)
         instructions_text = f"""Did the experimenter experience side effects? \n\nIf yes send 'Yes' if not send 'No'"""
 
-
     return instructions_text
-#
+
 
 @app.callback(
     [Output("prompt-text", "children"), Output("output-text", "children")],
