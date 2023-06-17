@@ -33,7 +33,7 @@ app.layout = dbc.Container(
     [
         dbc.Row(
             dbc.Col([
-                html.H3("PCR Experiment Software", className="text-center mt-4 mb-4"),
+                html.H3("CRM Experiment Software", className="text-center mt-4 mb-4"),
                 html.Div(random.choice(LST_OF_JOKES), id="joke", className="text-center mt-4", style={"font-size": "16px", "color": "gray"}),
                 html.Br(),
                 html.Div(
