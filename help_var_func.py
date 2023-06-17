@@ -42,7 +42,7 @@ first_side_effects = False  # Is there a side effect for the first patient? Desi
 # Initialize DataFrame
 df = pd.DataFrame({
     "dosage": [0],
-    "infected":  ["Yes" if i % 2 == 0 else "No" for i in range(len([0]))],
+    "infected":  ["No" if i % 2 == 0 else "Yes" for i in range(len([0]))],
     "total_patients": np.zeros(len([0]))
 })
 # Plot bar plot
@@ -50,7 +50,8 @@ fig = px.bar(df, x="dosage", y="total_patients", color="infected", barmode="stac
 
 fig.update_layout(
     margin=dict(l=100, r=100, t=0, b=100),  # Set all margins
-    xaxis=dict(type='category'),  # Set x-axis type to category
-    yaxis=dict(type='linear'),  # Set y-axis type to category
-    yaxis_range=[0, 1]  # Set the y-axis limit to 0 and 1
+    xaxis=dict(title='Dosage',type='category'),  # Set x-axis type to category
+    yaxis=dict(title='Patients',type='linear'),  # Set y-axis type to category
+    yaxis_range=[0, 1],  # Set the y-axis limit to 0 and 1
+    legend = dict(title="Side Effects")
 )
