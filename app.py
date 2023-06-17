@@ -37,10 +37,10 @@ app.layout = dbc.Container(
                 html.Div(random.choice(LST_OF_JOKES), id="joke", className="text-center mt-4", style={"font-size": "16px", "color": "gray"}),
                 html.Br(),
                 html.Div(
-                    dcc.Markdown('''
-                        The purpose of this application is to implement an experiment using the CRM model.
-                        The purpose of these experiments is to make a choice of the most correct dose at each stage in order to find the correct c values and thus actually understand what the drug with the desired MTD is according to the researchers.
-                    '''),
+                    dcc.Markdown('''By utilizing the CRM model, this application conducts experiments to determine 
+                    the appropriate dosage at each stage and identify the drug's Maximum Tolerated Dose (MTD) based 
+                    on desired MTD values. It uses prior probabilities for each dose and employs a maximum likelihood 
+                    estimator to estimate the drug closest to the MTD at each iteration.'''),
                     id="explanation",
                     className="text-left"
                 ),
@@ -73,7 +73,7 @@ app.layout = dbc.Container(
                         html.Div(id="user-answer", className="text-center", style={"font-size": "16px", "padding-bottom": "5px"}),
                         html.Br(),
                         html.H5("Output", className="text-center"),
-                        html.Div(id="output-text", className="text-center"),
+                        html.Div(id="output-text", className="text-center",style={"padding": "5px 0", "margin-bottom": "5px"})
                     ],
                     width=6
                 ),
@@ -94,6 +94,26 @@ app.layout = dbc.Container(
     className="mt-5",
 )
 
+
+@app.callback(
+    Output("user-input", "value"),
+    [Input("submit-button", "n_clicks")]
+)
+def clear_input(n_clicks):
+    """
+    Callback function to clear the input text when the submit button is clicked.
+
+    Args:
+        n_clicks (int): The number of times the submit button has been clicked.
+
+    Returns:
+        str: An empty string to clear the input text.
+
+    """
+    if n_clicks is not None and n_clicks > 0:
+        return ""
+    else:
+        return None
 
 def init_exp(n_clicks, user_input):
     """
@@ -165,11 +185,11 @@ def process_exp_results(df, last_painted_dos, recommend_dosage, dosage_values, x
     # Check if there are  patients
     positive_paints = df[df["total_patients"] > 0]
 
-    # Check if all paints are with dosage 1 and infected is Yes
+    # Check if all paints are with dosage 1 and not with side effects is Yes
     only_dosage_1 = (positive_paints["dosage"].unique() == 1).all()
     all_infected_yes = (positive_paints["infected"].unique() == "Yes").all()
 
-    # Check if there were no infected patients in the last painted dosage
+    # Check if there were no  patients with side effects in the last painted dosage
     no_infected_last = (df.loc[(df["dosage"] == last_painted_dos) & (df["infected"] == "Yes"), "total_patients"] == 0).any()
 
     # Determine the recommended dosage based on different conditions
@@ -206,7 +226,7 @@ def exp_process(n_clicks, user_input, output_text):
             recommend_dosage = process_exp_results(df, last_painted_dos, recommend_dosage, dosage_values, xi_list,
                                                    m_border)
 
-        instructions_text = f"""The recommended dose for the experiment now is {recommend_dosage}, what dose to use in the next experiment?\n\n e.g. - '1'"""
+        instructions_text = f"""The recommended dose for the experiment now is {recommend_dosage}, what dose to use in the current experiment?\n\n e.g. - '1'"""
     if n_clicks % 2 == 0:
         last_painted_dos = int(user_input)
         instructions_text = f"""Did the experimenter experience side effects? \n\nIf yes send 'Yes' if not send 'No'"""
@@ -247,9 +267,9 @@ def update_prompt_text(n_clicks, user_input, output_text):
             else:
                 theta, recommend_dosage, prob_l = main(df, eval(xi_list), float(m_border))
 
-            output_text = f"The theta is: {str(round(theta, 4))}\n\nThe current estimator for prob is: {str(prob_l)}"
-
-    return dcc.Markdown(return_val), output_text
+            output_text = f"The value of theta is: {str(round(theta, 4))}\n\n" \
+                          f"The current probability estimator is: \[{str([round(prob,4) for prob in prob_l])[1:-1]}\]"
+    return dcc.Markdown(return_val), dcc.Markdown(output_text)
 
 @app.callback(
     Output("user-answer", "children"),
@@ -313,7 +333,7 @@ def update_bar_plot(n_clicks, user_input):
         # Create a DataFrame
         df = pd.DataFrame({
             "dosage": dosage_values,
-            "infected": ["Yes" if i % 2 == 0 else "No" for i in range(len(dosage_values))],
+            "infected": ["No" if i % 2 == 0 else "Yes" for i in range(len(dosage_values))],
             "total_patients": np.zeros(len(dosage_values))
         })
 
@@ -322,9 +342,11 @@ def update_bar_plot(n_clicks, user_input):
 
         fig.update_layout(
             margin=dict(l=100, r=100, t=0, b=100),  # Set all margins
-            xaxis=dict(type='category'),  # Set x-axis type to category
-            yaxis=dict(type='linear'),  # Set y-axis type to category
-            yaxis_range=[0, 1]  # Set the y-axis limit to 0 and 1
+            xaxis=dict(title='Dosage', type='category'),  # Set x-axis type to category
+            yaxis=dict(title='Patients', type='linear'),  # Set y-axis type to category
+            yaxis_range=[0, 1],  # Set the y-axis limit to 0 and 1
+            legend = dict(title="Side Effects")
+
         )
 
     # Update the bar plot
@@ -334,8 +356,9 @@ def update_bar_plot(n_clicks, user_input):
 
         fig.update_layout(
             margin=dict(l=100, r=100, t=0, b=100),  # Set all margins
-            xaxis=dict(type='category'),  # Set x-axis type to category
-            yaxis=dict(type='linear')  # Set y-axis type to category
+            xaxis=dict(title='Dosage', type='category'),  # Set x-axis type to category
+            yaxis=dict(title='Patients', type='linear'),  # Set y-axis type to category
+            legend=dict(title="Side Effects")
         )
 
     return fig
