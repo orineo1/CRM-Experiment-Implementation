@@ -1,5 +1,7 @@
 # CRM Experiment Software
 
+![example](images/example.png)
+
 ## Introduction
 
 This repository contains the code for the CRM Experiment Software, which is a web application that conducts experiments to determine the appropriate dosage at each stage and identify the drug's Maximum Tolerated Dose (MTD) based on desired MTD values. The application uses prior probabilities for each dose and employs a maximum likelihood estimator to estimate the drug closest to the MTD at each iteration.
