@@ -41,15 +41,14 @@ def create_likelihood(args):
         num_failure = num_exp - num_success
         success_prob = args[i + 2]
         failure_prob = 1 - success_prob
-
-        binomial_coefficient = comb(num_exp, num_success)
-        term_string = f" * ({binomial_coefficient} * (({success_prob}**c) ** {num_success} )*( (1-{success_prob}**c) ** {num_failure}))"
+        term_string = f" * ((({success_prob}**c) ** {num_success} )*( (1-{success_prob}**c) ** {num_failure}))"
         function_string += term_string
 
     function_string += "\n    return - p"
 
     global_namespace = {}
     local_namespace = {}
+    print(function_string)
     exec(function_string, global_namespace, local_namespace)
     return local_namespace['likelihood']
 
@@ -104,3 +103,4 @@ def main(df, xi_l, m):
     xi_l_updated = np.array(xi_l) ** est_theta
 
     return est_theta, recommended_dosage, xi_l_updated
+
