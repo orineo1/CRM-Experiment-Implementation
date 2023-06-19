@@ -31,6 +31,9 @@ server = app.server
 
 app.layout = dbc.Container(
     [
+                html.Title("CRM Software")  # Change the title to "CRM Software"
+                # Additional head elements can be added here if needed
+        ,  # Change the heading to "CRM"
         dbc.Row(
             dbc.Col([
                 html.H3("CRM Experiment Software", className="text-center mt-4 mb-4"),
@@ -196,8 +199,8 @@ def process_exp_results(df, last_painted_dos, recommend_dosage, dosage_values, x
     if only_dosage_1 and all_infected_yes:  # Case where the first dosage always has side effects
         recommend_dosage = 1
         first_side_effects = True
-    elif no_infected_last:  # If the dosages without side effects continue to the next one
-        recommend_dosage = check_incremental_dosage(df, last_painted_dos, recommend_dosage, dosage_values)
+        if no_infected_last:  # If the dosages without side effects continue to the next one
+            recommend_dosage = check_incremental_dosage(df, last_painted_dos, recommend_dosage, dosage_values)
     else:  # All other scenarios
         theta, recommend_dosage, prob_test = main(df, eval(xi_list), float(m_border))
 
