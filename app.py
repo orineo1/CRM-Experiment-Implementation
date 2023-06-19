@@ -192,16 +192,19 @@ def process_exp_results(df, last_painted_dos, recommend_dosage, dosage_values, x
     only_dosage_1 = (positive_paints["dosage"].unique() == 1).all()
     all_infected_yes = (positive_paints["infected"].unique() == "Yes").all()
 
-    # Check if there were no  patients with side effects in the last painted dosage
+    # Check if there were no  patients with side effects in the last painted dosage and also no infected at all
     no_infected_last = (df.loc[(df["dosage"] == last_painted_dos) & (df["infected"] == "Yes"), "total_patients"] == 0).any()
+    not_infect_at_all = (df[df["infected"] == "Yes"].sum()["total_patients"]==0).any()
 
     # Determine the recommended dosage based on different conditions
-    if only_dosage_1 and all_infected_yes:  # Case where the first dosage always has side effects
-        recommend_dosage = 1
-        first_side_effects = True
-        if no_infected_last:  # If the dosages without side effects continue to the next one
+    if no_infected_last and not_infect_at_all:  # If the dosages without side effects continue to the next one
             recommend_dosage = check_incremental_dosage(df, last_painted_dos, recommend_dosage, dosage_values)
+            print("first if")
+    elif only_dosage_1 and all_infected_yes:  # Case where the first dosage always has side effects
+        recommend_dosage = 1
+        print("second if")
     else:  # All other scenarios
+        print("third if")
         theta, recommend_dosage, prob_test = main(df, eval(xi_list), float(m_border))
 
     return recommend_dosage
